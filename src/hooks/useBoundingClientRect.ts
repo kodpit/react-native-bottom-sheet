@@ -1,16 +1,16 @@
-import { type RefObject, useLayoutEffect } from 'react';
-import type { View } from 'react-native';
-import { isFabricInstalled } from '../utilities/isFabricInstalled';
+import {type RefObject, useLayoutEffect} from 'react';
+import type {View} from 'react-native';
+import {isFabricInstalled} from '../utilities/isFabricInstalled';
 
 export type BoundingClientRect = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  left: number;
-  right: number;
-  top: number;
-  bottom: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
 };
 
 /**
@@ -41,33 +41,40 @@ export type BoundingClientRect = {
  * });
  * ```
  */
+
 export function useBoundingClientRect(
-  ref: RefObject<View | null>,
-  handler: (layout: BoundingClientRect) => void
+    ref: RefObject<View | null>,
+    handler: (layout: BoundingClientRect) => void
 ) {
-  if (!isFabricInstalled()) {
-    return;
-  }
-
-  // biome-ignore lint/correctness/useHookAtTopLevel: `isFabricInstalled` is a constant that will not change during the runtime
-  useLayoutEffect(() => {
-    if (!ref || !ref.current) {
-      return;
+    if (!isFabricInstalled()) {
+        return;
     }
-
-    // @ts-ignore 👉 https://github.com/facebook/react/commit/53b1f69ba
-    if (ref.current.unstable_getBoundingClientRect !== null) {
-      // @ts-ignore https://github.com/facebook/react/commit/53b1f69ba
-      const layout = ref.current.unstable_getBoundingClientRect();
-      handler(layout);
-      return;
-    }
-
-    // @ts-ignore once it `unstable_getBoundingClientRect` gets stable 🤞.
-    if (ref.current.getBoundingClientRect !== null) {
-      // @ts-ignore once it `unstable_getBoundingClientRect` gets stable.
-      const layout = ref.current.getBoundingClientRect();
-      handler(layout);
-    }
-  });
+    
+    // biome-ignore lint/correctness/useHookAtTopLevel: `isFabricInstalled` is a constant that will not change during the runtime
+    useLayoutEffect(() => {
+        if (!ref || !ref.current) {
+            return;
+        }
+        
+        // Prefer the old unstable API if it exists
+        const unstableGetBoundingClientRect =
+            // @ts-ignore https://github.com/facebook/react/commit/53b1f69ba
+            (ref.current as any).unstable_getBoundingClientRect;
+        
+        if (typeof unstableGetBoundingClientRect === 'function') {
+            const layout = unstableGetBoundingClientRect.call(ref.current);
+            handler(layout);
+            return;
+        }
+        
+        // Fallback to the stable API if available
+        const getBoundingClientRect =
+            // @ts-ignore once unstable_getBoundingClientRect gets stable
+            (ref.current as any).getBoundingClientRect;
+        
+        if (typeof getBoundingClientRect === 'function') {
+            const layout = getBoundingClientRect.call(ref.current);
+            handler(layout);
+        }
+    });
 }
